@@ -27,7 +27,7 @@ auth sufficient pam_unix.so try_first_pass
 auth sufficient pam_fprintd.so
 ```
 
-3. Create `/etc/pam.d/sub-usb` (for your fingerprint):
+3. Create `/etc/pam.d/sub-usb` (for your usb device):
 ```text
 auth sufficient pam_usb.so
 ```
