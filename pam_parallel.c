@@ -9,7 +9,9 @@
 #include <sys/wait.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <fcntl.h>
+#include <time.h>
 
 #define MAX_CHILDREN 10
 #define MSG_AUTH_RESULT 1
@@ -286,8 +288,22 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     
 cleanup:
     for (int i=0; i<total_children; i++) {
-        if (!children[i].is_done) kill(children[i].pid, SIGKILL);
-        waitpid(children[i].pid, NULL, 0); 
+        if (!children[i].is_done) {
+            // Send SIGTERM first to allow graceful cleanup (e.g., removing .tmp files)
+            kill(children[i].pid, SIGTERM);
+        }
+    }
+
+    // Give children 200ms to clean up and exit gracefully
+    struct timespec ts = {0, 200000000}; // 200ms in nanoseconds
+    nanosleep(&ts, NULL);
+
+    for (int i=0; i<total_children; i++) {
+        if (!children[i].is_done) {
+            // Force kill if still running after SIGTERM
+            kill(children[i].pid, SIGKILL);
+        }
+        waitpid(children[i].pid, NULL, 0);
         close(children[i].pipe_in);
         close(children[i].pipe_out);
     }
